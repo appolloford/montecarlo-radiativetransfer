@@ -1,0 +1,5 @@
+# instruction and result
+*.pdf
+
+# build and executable
+mcrt.exe*
