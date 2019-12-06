@@ -1,5 +1,8 @@
 # instruction and result
 *.pdf
+*.bin
+*.dat
 
 # build and executable
 mcrt.exe*
+a.out
