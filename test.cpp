@@ -4,6 +4,9 @@
 #include <vector>
 #include <cmath>
 #include <time.h>  
+#include <unistd.h>
+#include <getopt.h>
+#include <string.h>
 
 #define FAIL 0
 #define SUCCESS 1
@@ -92,15 +95,62 @@ int Cell::initializePhotons() {
     return SUCCESS;
 }
 
-int main(){
+int main(int argc, char *argv[]){
 
     // double absorptionCoeff = 1.0;
+    bool inhomogeneous = false;
     double absorptionCoeff = 0.2;
     double forbackRatio = 0.7;
     double reflect = 0.3;
     Cell exteriorSource, exteriorSink;
     Cell cells[LAYER];
     double opticalLen = 1.0;
+
+    static struct option long_options[] = {
+        { "albedo", required_argument, nullptr, 0 },
+        { "reflect", required_argument, nullptr, 0 },
+        { "for-back-ratio", required_argument, nullptr, 0 },
+        { "inhomogeneous-medium", no_argument, nullptr, 'v'},
+        { "help", no_argument, nullptr, 'h' },
+        { nullptr, no_argument, nullptr, 0 }
+    };
+
+    int opt = 0;
+    int longIndex = 0;
+    opt = getopt_long( argc, argv, "vh", long_options, &longIndex );
+    while( opt != -1 ) {
+        switch( opt ) {
+            case 'v':
+                inhomogeneous = true;
+                printf("inhomogeneous medium: on\n");
+                break;
+            case 'h':   /* fall-through is intentional */
+            // case '?':
+            //     display_usage();
+            //     break;
+
+            case 0:     /* long option without a short arg */
+                if( strcmp( "albedo", long_options[longIndex].name ) == 0 ) {
+                    printf("albedo=%lf \n",atof(optarg));
+                    absorptionCoeff = 1.0-atof(optarg);
+                }
+                else if( strcmp( "reflect", long_options[longIndex].name ) == 0 ) {
+                    printf("reflect=%lf \n",atof(optarg));
+                    reflect = atof(optarg);
+                }
+                else if( strcmp( "for-back-ratio", long_options[longIndex].name ) == 0 ) {
+                    printf("for-back-ratio=%lf \n",atof(optarg));
+                    forbackRatio = atof(optarg);
+                }
+                break;
+
+            default:
+                /* You won't actually get here. */
+                break;
+        }
+
+        opt = getopt_long( argc, argv, "h", long_options, &longIndex );
+    }
 
     double opticalDepthArray[LAYER] = {
         0.025, 0.025, 0.025, 0.025, 0.025,
@@ -111,9 +161,14 @@ int main(){
 
     double accumDepth = 0.0;
     for (int i=0; i<LAYER; i++) {
-        cells[i].opticalDepth = opticalLen * (i+1)/LAYER;
-        // accumDepth += opticalDepthArray[i];
-        // cells[i].opticalDepth = accumDepth;
+        if (inhomogeneous) {
+            accumDepth += opticalDepthArray[i];
+            cells[i].opticalDepth = accumDepth;
+        }
+        else {
+            cells[i].opticalDepth = opticalLen * (i+1)/LAYER;
+        }
+        // cells[i].opticalDepth = opticalLen * (i+1)/LAYER;
         cells[i].setAbsorptionCoeff(absorptionCoeff);
         cells[i].setForBackRatio(forbackRatio);
     }
@@ -261,12 +316,12 @@ int main(){
         // double intensity = cells[i].internalEnergy / (double) NPHOTON;
         intensity += cells[i].internalEnergy / (double) NPHOTON;
         absorption += cells[i].internalEnergy / (double) NPHOTON;
-        printf("%lf %d \n", intensity, i);
+        // printf("%lf %d \n", intensity, i);
         fprintf(outfile, "%lf %d \n", intensity, i);
     }
-    printf("%lf \n", exteriorSource.internalEnergy);
-    printf("%lf \n", exteriorSink.internalEnergy);
-    printf("%lf \n", absorption);
+    printf("I(up)/I(tot) = %lf \n", exteriorSource.internalEnergy / (double) NPHOTON);
+    printf("I(down)/I(tot) = %lf \n", exteriorSink.internalEnergy / (double) NPHOTON);
+    printf("I(abs)/I(tot) = %lf \n", absorption);
     fclose(outfile);
 
     return 0;
