@@ -99,6 +99,7 @@ int main(int argc, char *argv[]){
 
     // double absorptionCoeff = 1.0;
     bool inhomogeneous = false;
+    bool singleruntest = false;
     double absorptionCoeff = 0.2;
     double forbackRatio = 0.7;
     double reflect = 0.3;
@@ -111,6 +112,7 @@ int main(int argc, char *argv[]){
         { "reflect", required_argument, nullptr, 0 },
         { "for-back-ratio", required_argument, nullptr, 0 },
         { "inhomogeneous-medium", no_argument, nullptr, 'v'},
+        { "singleruntest", no_argument, nullptr, 0},
         { "help", no_argument, nullptr, 'h' },
         { nullptr, no_argument, nullptr, 0 }
     };
@@ -142,6 +144,12 @@ int main(int argc, char *argv[]){
                     printf("for-back-ratio=%lf \n",atof(optarg));
                     forbackRatio = atof(optarg);
                 }
+                else if( strcmp( "inhomogeneous", long_options[longIndex].name ) == 0 ) {
+                    inhomogeneous = true;
+                }
+                else if( strcmp( "singleruntest", long_options[longIndex].name ) == 0 ) {
+                    singleruntest = true;
+                }
                 break;
 
             default:
@@ -150,6 +158,12 @@ int main(int argc, char *argv[]){
         }
 
         opt = getopt_long( argc, argv, "h", long_options, &longIndex );
+    }
+
+    if (singleruntest) {
+        absorptionCoeff = 1.0;
+        reflect = 0.0;
+        forbackRatio = 1.0;
     }
 
     double opticalDepthArray[LAYER] = {
@@ -305,7 +319,8 @@ int main(int argc, char *argv[]){
     }
 
     count = 0;
-    FILE* outfile = fopen("res.dat", "w");
+    FILE* outfile = fopen("output.dat", "w");
+    fprintf(outfile, "accumulated_intensity layer\n");
     double intensity = exteriorSink.internalEnergy / (double) NPHOTON;
     double absorption = 0.0;
     fprintf(outfile, "%lf %d \n", intensity, LAYER);
@@ -322,6 +337,8 @@ int main(int argc, char *argv[]){
     printf("I(up)/I(tot) = %lf \n", exteriorSource.internalEnergy / (double) NPHOTON);
     printf("I(down)/I(tot) = %lf \n", exteriorSink.internalEnergy / (double) NPHOTON);
     printf("I(abs)/I(tot) = %lf \n", absorption);
+    printf("Energy Conservation rate: %lf\n", absorption+(exteriorSource.internalEnergy+exteriorSink.internalEnergy)/(double)NPHOTON);
+    printf("Check intensity distribution in outpu.dat\n");
     fclose(outfile);
 
     return 0;
